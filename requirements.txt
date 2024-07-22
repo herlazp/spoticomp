@@ -2,3 +2,4 @@ requests
 dash
 plotly
 pandas
+spotipy
