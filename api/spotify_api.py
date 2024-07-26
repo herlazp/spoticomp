@@ -1,9 +1,7 @@
 import os
-import csv
 from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
@@ -43,54 +41,75 @@ def get_all_tracks_by_artist(artist_name):
     tracks = results['tracks']['items']
     return tracks
 
-def save_track_features_to_csv(artist_name):
+def get_related_genres(artist_name):
+    results = sp.search(q=f'artist:{artist_name}', type='artist')
+    print(results)
+    artist = results['artists']['items'][0]
+    genres = artist['genres']
+    return genres
+
+def get_popular_artists(genres):
+    popular_artists = []
+    for genre in genres:
+        results = sp.search(q=f'genre:{genre}', type='artist', limit=50)
+        for artist in results['artists']['items']:
+            popular_artists.append(artist['name'])
+    return popular_artists
+
+def get_popular_tracks(artist_name):
+    results = sp.search(q=f'artist:{artist_name}', type='track', limit=10)
+    tracks = results['tracks']['items']
+    return tracks
+
+def get_popular_playlists(genre):
+    results = sp.search(q=f'genre:{genre}', type='playlist', limit=10)
+    playlists = results['playlists']['items']
+    return playlists
+
+def get_playlist_tracks(playlist_id):
+    results = sp.playlist_tracks(playlist_id)
+    tracks = results['items']
+    return [track['track'] for track in tracks]
+
+def get_related_artists_tracks(artist_name, include_audio_features=False):
     """
-    Saves the audio features of all tracks by a given artist to a CSV file.
-
-    :param artist_name: Name of the artist
+    Fetches top tracks of related artists to the specified artist.
+    
+    Parameters:
+    artist_name (str): The name of the artist to find related artists for.
+    include_audio_features (bool): If True, include audio features for the tracks.
+    
+    Returns:
+    list: A list of dictionaries containing track details, and optionally audio features.
     """
-    tracks = get_all_tracks_by_artist(artist_name)
-    features_dict = {}
+    # Search for the artist ID
+    result = sp.search(q='artist:' + artist_name, type='artist')
+    if not result['artists']['items']:
+        return f"Artist '{artist_name}' not found."
 
-    # Load existing features if file exists
-    filename = f"{artist_name}_features.csv"
-    existing_track_ids = set()
-    if os.path.exists(filename):
-        with open(filename, 'r') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                existing_track_ids.add(row['id'])
+    artist_id = result['artists']['items'][0]['id']
 
-    # Fetch track features, iterate over all tracks and select the latest version of each song
-    for track in tracks:
-        track_id = track['id']
-        track_name = track['name']
-        album_release_date = track['album']['release_date']
+    # Get related artists
+    related_artists = sp.artist_related_artists(artist_id)
+    related_artist_ids = [artist['id'] for artist in related_artists['artists']]
 
-        if track_id not in existing_track_ids:
-            features = get_track_features(track_id)
-            features['name'] = track_name
-            features['release_date'] = album_release_date
+    # Get top tracks of related artists
+    related_tracks = []
+    for artist_id in related_artist_ids:
+        top_tracks = sp.artist_top_tracks(artist_id, country='US')
+        related_tracks.extend(top_tracks['tracks'])
 
-            # Convert release date to datetime object for comparison
-            release_date_dt = datetime.strptime(album_release_date, '%Y-%m-%d')
+    # Optionally fetch audio features
+    if include_audio_features:
+        track_ids = [track['id'] for track in related_tracks]
+        audio_features = sp.audio_features(track_ids)
+        # Combine track details with audio features
+        for track, features in zip(related_tracks, audio_features):
+            track['audio_features'] = features
 
-            # Check if this song is already in the dictionary and if the current one is newer
-            if track_name not in features_dict or release_date_dt < features_dict[track_name]['release_date']:
-                features_dict[track_name] = {
-                    **features,
-                    'release_date': release_date_dt
-                }
-
-    # Write features to CSV file
-    with open(filename, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=csv_columns)
-        writer.writeheader()
-        for track in features_dict.values():
-            # Convert release_date back to string format for CSV
-            track['release_date'] = track['release_date'].strftime('%Y-%m-%d')
-            writer.writerow(track)
+    return related_tracks
 
 if __name__ == "__main__":
     artist_name = 'Ignomala'  # Replace with your artist name
-    save_track_features_to_csv(artist_name)
+    related_tracks = get_related_artists_tracks(artist_name)
+    print (related_tracks)
