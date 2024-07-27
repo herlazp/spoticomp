@@ -59,7 +59,6 @@ def get_top_tracks(artist_id, artist_name, track_limit=5):
 
 def get_related_genres(artist_name):
     results = sp.search(q=f'artist:{artist_name}', type='artist')
-    print(results)
     artist = results['artists']['items'][0]
     genres = artist['genres']
     return genres
@@ -101,11 +100,9 @@ def filter_popular_artists(artists, min_followers=50000):
     popular_artists_sorted = sorted(popular_artists, key=lambda x: x['followers']['total'], reverse=True)
     return popular_artists_sorted
 
-def get_popular_related_tracks(artist_name, min_followers=50000):
+def get_popular_related_tracks_by_related_artist(artist_name, min_followers=50000):
     related_artists = get_related_artists(artist_name)
-    print(related_artists)
     popular_artists = filter_popular_artists(related_artists, min_followers)
-    print(popular_artists)
 
     all_tracks = []
     for artist in popular_artists:
@@ -113,9 +110,69 @@ def get_popular_related_tracks(artist_name, min_followers=50000):
         all_tracks.extend(artist_tracks)
     return all_tracks
 
+def find_similar_tracks_by_recommendations(track_id, max_results=20):
+    """
+    Finds tracks with similar audio features to the given track ID.
+    
+    :param track_id: Spotify ID of the track to find similar tracks for.
+    :param max_results: Number of similar tracks to find.
+    :return: List of similar tracks.
+    """
+    similar_tracks = sp.recommendations(seed_tracks=[track_id], limit=max_results)
+    track_data_list = []
+    for track in similar_tracks['tracks']:
+        artist_name = ', '.join([artist['name'] for artist in track['artists']])
+        track_data = {
+            'id': track['id'],
+            'name': track['name'],
+            'artist': artist_name,
+            'release_date': track['album']['release_date'],
+        }
+        track_data.update(get_track_features(track['id']))
+        track_data_list.append(track_data)
+    return track_data_list
+
+def get_popular_similar_tracks_by_recommendations(artist_name, min_followers=50000, max_results=20):
+    """
+    Finds popular tracks with similar audio features to a track by the given artist.
+    
+    :param artist_name: Name of the artist to find a reference track.
+    :param min_followers: Minimum number of followers to consider an artist popular.
+    :param max_results: Maximum number of similar tracks to retrieve.
+    :return: List of popular similar tracks.
+    """
+    # Step 1: Find the top track of the given artist
+    artist_search = sp.search(q=f'artist:{artist_name}', type='artist')
+    if not artist_search['artists']['items']:
+        print(f"No artist found for {artist_name}")
+        return []
+
+    artist_id = artist_search['artists']['items'][0]['id']
+    top_tracks = get_top_tracks(artist_id,artist_name)
+    if not top_tracks:
+        print(f"No tracks found for artist {artist_name}")
+        return []
+    
+    reference_track = top_tracks[0]  # Using the first track as the reference
+
+    # Step 2: Find similar tracks based on audio features
+    similar_tracks = find_similar_tracks_by_recommendations(reference_track['id'], max_results)
+
+    # Step 3: Filter the similar tracks for popular artists
+    popular_similar_tracks = []
+    for track in similar_tracks:
+        track_artists = sp.track(track['id'])['artists']
+        for artist in track_artists:
+            artist_details = sp.artist(artist['id'])
+            if artist_details['followers']['total'] > min_followers:
+                popular_similar_tracks.append(track)
+                break
+
+    return popular_similar_tracks
+
 if __name__ == "__main__":
     artist_name = 'Ignomala'  # Replace with your artist name
-    popular_tracks = get_popular_related_tracks(artist_name, min_followers=100000)
-    for track in popular_tracks:
+    popular_similar_tracks = get_popular_similar_tracks_by_recommendations(artist_name, min_followers=10000, max_results=20)
+    for track in popular_similar_tracks:
         print(f"Track: {track['name']} by {track['artist']} (Release Date: {track['release_date']})")
         print(f"Features: {track}")
