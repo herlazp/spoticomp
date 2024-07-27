@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+from scipy.spatial import distance
 
 # Load environment variables from .env file
 load_dotenv()
@@ -110,7 +111,7 @@ def get_popular_related_tracks_by_related_artist(artist_name, min_followers=5000
         all_tracks.extend(artist_tracks)
     return all_tracks
 
-def find_similar_tracks_by_recommendations(track_id, max_results=20):
+def find_similar_tracks_by_recommendations(track_id, max_results=100):
     """
     Finds tracks with similar audio features to the given track ID.
     
@@ -170,9 +171,33 @@ def get_popular_similar_tracks_by_recommendations(artist_name, min_followers=500
 
     return popular_similar_tracks
 
+def calculate_feature_similarity(features1, features2):
+    # Extract numeric feature values for similarity calculation
+    feature_values1 = [features1[key] for key in features1 if isinstance(features1[key], (int, float))]
+    feature_values2 = [features2[key] for key in features2 if isinstance(features2[key], (int, float))]
+    return distance.euclidean(feature_values1, feature_values2)
+
+def get_most_similar_tracks(reference_track, similar_tracks, top_n=5):
+    reference_features = get_track_features(reference_track['id'])
+    track_similarity = []
+
+    for track in similar_tracks:
+        track_features = {key: track[key] for key in csv_columns if key in track}
+        similarity = calculate_feature_similarity(reference_features, track_features)
+        track_similarity.append((track, similarity))
+
+    # Sort tracks by similarity, then by popularity
+    track_similarity.sort(key=lambda x: (x[1], -x[0]['popularity']))
+
+    return [track[0] for track in track_similarity[:top_n]]
+
 if __name__ == "__main__":
     artist_name = 'Ignomala'  # Replace with your artist name
-    popular_similar_tracks = get_popular_similar_tracks_by_recommendations(artist_name, min_followers=10000, max_results=20)
-    for track in popular_similar_tracks:
+    reference_track_id = get_popular_tracks(artist_name)[0]['id']  # Replace with your track ID
+
+    similar_tracks = find_similar_tracks_by_recommendations(reference_track_id, max_results=100)
+    most_similar_tracks = get_most_similar_tracks({'id': reference_track_id}, similar_tracks, top_n=5)
+
+    for track in most_similar_tracks:
         print(f"Track: {track['name']} by {track['artist']} (Release Date: {track['release_date']})")
         print(f"Features: {track}")
