@@ -41,6 +41,22 @@ def get_all_tracks_by_artist(artist_name):
     tracks = results['tracks']['items']
     return tracks
 
+def get_top_tracks(artist_id, artist_name, track_limit=5):
+    results = sp.artist_top_tracks(artist_id)
+    tracks = results['tracks'][:track_limit]
+    top_tracks = []
+    for track in tracks:
+        track_data = {
+            'id': track['id'],
+            'name': track['name'],
+            'artist': artist_name,
+            'release_date': track['album']['release_date'],
+        }
+        track_data.update(get_track_features(track['id']))
+        top_tracks.append(track_data)
+    
+    return top_tracks
+
 def get_related_genres(artist_name):
     results = sp.search(q=f'artist:{artist_name}', type='artist')
     print(results)
@@ -71,45 +87,35 @@ def get_playlist_tracks(playlist_id):
     tracks = results['items']
     return [track['track'] for track in tracks]
 
-def get_related_artists_tracks(artist_name, include_audio_features=False):
-    """
-    Fetches top tracks of related artists to the specified artist.
+def get_related_artists(artist_name):
+    results = sp.search(q=f'artist:{artist_name}', type='artist')
+    if not results['artists']['items']:
+        return []
     
-    Parameters:
-    artist_name (str): The name of the artist to find related artists for.
-    include_audio_features (bool): If True, include audio features for the tracks.
-    
-    Returns:
-    list: A list of dictionaries containing track details, and optionally audio features.
-    """
-    # Search for the artist ID
-    result = sp.search(q='artist:' + artist_name, type='artist')
-    if not result['artists']['items']:
-        return f"Artist '{artist_name}' not found."
-
-    artist_id = result['artists']['items'][0]['id']
-
-    # Get related artists
+    artist_id = results['artists']['items'][0]['id']
     related_artists = sp.artist_related_artists(artist_id)
-    related_artist_ids = [artist['id'] for artist in related_artists['artists']]
+    return related_artists['artists']
 
-    # Get top tracks of related artists
-    related_tracks = []
-    for artist_id in related_artist_ids:
-        top_tracks = sp.artist_top_tracks(artist_id, country='US')
-        related_tracks.extend(top_tracks['tracks'])
+def filter_popular_artists(artists, min_followers=50000):
+    popular_artists = [artist for artist in artists if artist['followers']['total'] > min_followers]
+    popular_artists_sorted = sorted(popular_artists, key=lambda x: x['followers']['total'], reverse=True)
+    return popular_artists_sorted
 
-    # Optionally fetch audio features
-    if include_audio_features:
-        track_ids = [track['id'] for track in related_tracks]
-        audio_features = sp.audio_features(track_ids)
-        # Combine track details with audio features
-        for track, features in zip(related_tracks, audio_features):
-            track['audio_features'] = features
+def get_popular_related_tracks(artist_name, min_followers=50000):
+    related_artists = get_related_artists(artist_name)
+    print(related_artists)
+    popular_artists = filter_popular_artists(related_artists, min_followers)
+    print(popular_artists)
 
-    return related_tracks
+    all_tracks = []
+    for artist in popular_artists:
+        artist_tracks = get_top_tracks(artist['id'], artist['name'])
+        all_tracks.extend(artist_tracks)
+    return all_tracks
 
 if __name__ == "__main__":
     artist_name = 'Ignomala'  # Replace with your artist name
-    related_tracks = get_related_artists_tracks(artist_name)
-    print (related_tracks)
+    popular_tracks = get_popular_related_tracks(artist_name, min_followers=100000)
+    for track in popular_tracks:
+        print(f"Track: {track['name']} by {track['artist']} (Release Date: {track['release_date']})")
+        print(f"Features: {track}")
