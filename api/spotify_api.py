@@ -52,6 +52,7 @@ def get_top_tracks(artist_id, artist_name, track_limit=5):
             'name': track['name'],
             'artist': artist_name,
             'release_date': track['album']['release_date'],
+            'popularity': track['popularity'],
         }
         track_data.update(get_track_features(track['id']))
         top_tracks.append(track_data)
@@ -128,6 +129,7 @@ def find_similar_tracks_by_recommendations(track_id, max_results=100):
             'name': track['name'],
             'artist': artist_name,
             'release_date': track['album']['release_date'],
+            'popularity': track['popularity'],
         }
         track_data.update(get_track_features(track['id']))
         track_data_list.append(track_data)
@@ -187,7 +189,7 @@ def get_most_similar_tracks(reference_track, similar_tracks, top_n=5):
         track_similarity.append((track, similarity))
 
     # Sort tracks by similarity, then by popularity
-    track_similarity.sort(key=lambda x: (x[1], -x[0]['popularity']))
+    track_similarity.sort(key=lambda x: (x[1], -x[0].get('popularity',0)))
 
     return [track[0] for track in track_similarity[:top_n]]
 
