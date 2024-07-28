@@ -54,13 +54,19 @@ def update_chart(n_clicks, track_name_1, track_name_2):
     #values_1 = [val / max(values_1) if max(values_1) != 0 else 0 for val in values_1]
     #values_2 = [val / max(values_2) if max(values_2) != 0 else 0 for val in values_2]
 
+    # Get artist names for labels
+    artist_name_1 = track_1['artists'][0]['name']
+    artist_name_2 = track_2['artists'][0]['name']
+    track_label_1 = f"{artist_name_1} - {track_name_1}"
+    track_label_2 = f"{artist_name_2} - {track_name_2}"
+
     fig = go.Figure()
 
     fig.add_trace(go.Scatterpolar(
         r=values_1,
         theta=features,
         fill='toself',
-        name=track_name_1,
+        name=track_label_1,
         line=dict(color='blue')
     ))
 
@@ -68,7 +74,7 @@ def update_chart(n_clicks, track_name_1, track_name_2):
         r=values_2,
         theta=features,
         fill='toself',
-        name=track_name_2,
+        name=track_label_2,
         line=dict(color='red')
     ))
 
