@@ -33,17 +33,26 @@ def update_chart(n_clicks, track_name_1, track_name_2):
     track_id_2 = track_2['id']
     comparison = compare_two_tracks(track_id_1, track_id_2)
 
-    # Remove 'id' from the comparison features
-    comparison.pop('id', None)
+    # Remove 'id' and any feature not in the range [0, 1]
+    filtered_comparison = {
+        feature: values
+        for feature, values in comparison.items()
+        if feature != 'id' and 
+        feature != 'mode' and
+        feature != 'speechiness' and
+        feature != 'instrumentalness' and
+        0 <= values['track_1'] <= 1 and 
+        0 <= values['track_2'] <= 1
+    }
 
     # Radar chart data preparation
-    features = list(comparison.keys())
-    values_1 = [comparison[feature]['track_1'] for feature in features]
-    values_2 = [comparison[feature]['track_2'] for feature in features]
+    features = list(filtered_comparison.keys())
+    values_1 = [filtered_comparison[feature]['track_1'] for feature in features]
+    values_2 = [filtered_comparison[feature]['track_2'] for feature in features]
 
     # Normalize values for a better comparison (optional)
-    values_1 = [val / max(values_1) if max(values_1) != 0 else 0 for val in values_1]
-    values_2 = [val / max(values_2) if max(values_2) != 0 else 0 for val in values_2]
+    #values_1 = [val / max(values_1) if max(values_1) != 0 else 0 for val in values_1]
+    #values_2 = [val / max(values_2) if max(values_2) != 0 else 0 for val in values_2]
 
     fig = go.Figure()
 
