@@ -31,6 +31,27 @@ def get_track_features(track_id):
     selected_features = {key: features[key] for key in csv_columns[:-1] if key != 'name'}
     return selected_features
     
+def search_track(track_name):
+    results = sp.search(q=f'track:{track_name}', type='track', limit=1)
+    if results['tracks']['items']:
+        return results['tracks']['items'][0]
+    else:
+        return None
+
+def compare_two_tracks(track_id1, track_id2):
+    features1 = get_track_features(track_id1)
+    features2 = get_track_features(track_id2)
+
+    comparison = {}
+    for feature in csv_columns:
+        if feature in features1 and feature in features2:
+            comparison[feature] = {
+                'track_1': features1[feature],
+                'track_2': features2[feature]
+            }
+
+    return comparison
+
 def get_all_tracks_by_artist(artist_name):
     """
     Fetches all tracks by a given artist.
@@ -194,12 +215,18 @@ def get_most_similar_tracks(reference_track, similar_tracks, top_n=5):
     return [track[0] for track in track_similarity[:top_n]]
 
 if __name__ == "__main__":
-    artist_name = 'Ignomala'  # Replace with your artist name
-    reference_track_id = get_popular_tracks(artist_name)[0]['id']  # Replace with your track ID
+    # Example: Replace with actual user inputs
+    track_name_1 = 'STUCK'
+    track_name_2 = 'IF THE SPIRITS COME OVER'
 
-    similar_tracks = find_similar_tracks_by_recommendations(reference_track_id, max_results=100)
-    most_similar_tracks = get_most_similar_tracks({'id': reference_track_id}, similar_tracks, top_n=5)
+    track_1 = search_track(track_name_1)
+    track_2 = search_track(track_name_2)
 
-    for track in most_similar_tracks:
-        print(f"Track: {track['name']} by {track['artist']} (Release Date: {track['release_date']})")
-        print(f"Features: {track}")
+    if track_1 and track_2:
+        track_id_1 = track_1['id']
+        track_id_2 = track_2['id']
+
+        comparison = compare_two_tracks(track_id_1, track_id_2)
+        print(comparison)
+    else:
+        print("One or both tracks not found.")
