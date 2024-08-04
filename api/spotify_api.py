@@ -31,10 +31,13 @@ def get_track_features(track_id):
     selected_features = {key: features[key] for key in csv_columns[:-1] if key != 'name'}
     return selected_features
     
-def search_track(track_name):
-    results = sp.search(q=f'track:{track_name}', type='track', limit=1)
-    if results['tracks']['items']:
-        return results['tracks']['items'][0]
+def search_track(track_name, limit=3):
+    results = sp.search(q=f'track:{track_name}', type='track', limit=limit)
+    tracks = results['tracks']['items']
+    if tracks:
+        #sorted_tracks = sorted(tracks, key=lambda x: x['popularity'], reverse=True)
+        #return sorted_tracks
+        return tracks
     else:
         return None
 

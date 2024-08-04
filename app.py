@@ -1,6 +1,7 @@
 import dash
 from dash import dcc, html
 import plotly.graph_objs as go
+from dash.dependencies import Input, Output, State
 from api.spotify_api import search_track, compare_two_tracks
 
 # Initialize the Dash app
@@ -9,15 +10,37 @@ app = dash.Dash(__name__)
 app.layout = html.Div([
     dcc.Input(id='track-name-1', type='text', placeholder='Enter first track name'),
     dcc.Input(id='track-name-2', type='text', placeholder='Enter second track name'),
-    html.Button(id='submit-button', children='Compare'),
+    html.Button(id='search-button', children='Search'),
+    dcc.Dropdown(id='dropdown-track-1', placeholder='Select first track'),
+    dcc.Dropdown(id='dropdown-track-2', placeholder='Select second track'),
+    html.Button(id='compare-button', children='Compare'),
     dcc.Graph(id='radar-chart')
 ])
 
 @app.callback(
-    dash.dependencies.Output('radar-chart', 'figure'),
-    [dash.dependencies.Input('submit-button', 'n_clicks')],
-    [dash.dependencies.State('track-name-1', 'value'),
-     dash.dependencies.State('track-name-2', 'value')]
+    [Output('dropdown-track-1', 'options'),
+     Output('dropdown-track-2', 'options')],
+    [Input('search-button', 'n_clicks')],
+    [State('track-name-1', 'value'),
+     State('track-name-2', 'value')]
+)
+def update_dropdowns(n_clicks, track_name_1, track_name_2):
+    if n_clicks is None or not track_name_1 or not track_name_2:
+        return [], []
+
+    results_1 = search_track(track_name_1, limit=3)
+    results_2 = search_track(track_name_2, limit=3)
+
+    options_1 = [{'label': f"{track['name']} by {track['artists'][0]['name']} (Popularity: {track['popularity']})", 'value': track['id']} for track in results_1]
+    options_2 = [{'label': f"{track['name']} by {track['artists'][0]['name']} (Popularity: {track['popularity']})", 'value': track['id']} for track in results_2]
+
+    return options_1, options_2
+
+@app.callback(
+    Output('radar-chart', 'figure'),
+    [Input('compare-button', 'n_clicks')],
+    [State('dropdown-track-1', 'value'),
+     State('dropdown-track-2', 'value')]
 )
 def update_chart(n_clicks, track_name_1, track_name_2):
     if n_clicks is None or not track_name_1 or not track_name_2:
