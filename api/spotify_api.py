@@ -31,27 +31,31 @@ def get_track_features(track_id):
     selected_features = {key: features[key] for key in csv_columns[:-1] if key != 'name'}
     return selected_features
     
-def search_track(track_name, limit=3):
-    results = sp.search(q=f'track:{track_name}', type='track', limit=limit)
-    tracks = results['tracks']['items']
-    if tracks:
-        #sorted_tracks = sorted(tracks, key=lambda x: x['popularity'], reverse=True)
-        #return sorted_tracks
-        return tracks
+def search_track(track_name, artist_name=None, limit=10):
+    if artist_name:
+        query = f'track:"{track_name}" artist:"{artist_name}"'
     else:
-        return None
+        query = f'track:"{track_name}"'
+    
+    results = sp.search(q=query, type='track', limit=limit)
+    tracks = results['tracks']['items']
+    exact_tracks = [track for track in tracks if track['name'].lower() == track_name.lower()]
+    sorted_tracks = sorted(exact_tracks, key=lambda x: x['popularity'], reverse=True)
+    return sorted_tracks[:limit]
 
-def compare_two_tracks(track_id1, track_id2):
-    features1 = get_track_features(track_id1)
-    features2 = get_track_features(track_id2)
 
-    comparison = {}
-    for feature in csv_columns:
-        if feature in features1 and feature in features2:
-            comparison[feature] = {
-                'track_1': features1[feature],
-                'track_2': features2[feature]
-            }
+def compare_two_tracks(track_id_1, track_id_2):
+    features_1 = get_track_features(track_id_1)
+    features_2 = get_track_features(track_id_2)
+
+    track_1 = sp.track(track_id_1)
+    track_2 = sp.track(track_id_2)
+
+    comparison = {key: {'track_1': features_1[key], 'track_2': features_2[key]} for key in features_1.keys()}
+    
+    # Include track details in the comparison dictionary
+    comparison['track_1_details'] = {'name': track_1['name'], 'artist': track_1['artists'][0]['name']}
+    comparison['track_2_details'] = {'name': track_2['name'], 'artist': track_2['artists'][0]['name']}
 
     return comparison
 
