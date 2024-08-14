@@ -30,7 +30,22 @@ def get_track_features(track_id):
     # Select only the required features
     selected_features = {key: features[key] for key in csv_columns[:-1] if key != 'name'}
     return selected_features
-    
+
+def get_track_details(track_id):
+    """Fetch detailed information about a track by its Spotify ID."""
+    try:
+        track_details = sp.track(track_id)
+        return {
+            'name': track_details['name'],
+            'artist': track_details['artists'][0]['name'],
+            'popularity': track_details['popularity'],
+            'album': track_details['album']['name'],
+            'release_date': track_details['album']['release_date']
+        }
+    except Exception as e:
+        print(f"Error fetching track details: {e}")
+        return None
+
 def search_track(track_name, artist_name=None, limit=10):
     if artist_name:
         query = f'track:"{track_name}" artist:"{artist_name}"'
