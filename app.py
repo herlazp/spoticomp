@@ -122,11 +122,17 @@ def update_dropdown_2(n_clicks, track_name_2, artist_name_2):
 def update_comparison_chart(track_id_2, track_id_1):
     if track_id_1 and track_id_2:
         comparison = compare_two_tracks(track_id_1, track_id_2)
+
+        selected_features = ["valence", "danceability", "energy"]
+
         filtered_comparison = {
             feature: values
             for feature, values in comparison.items()
             if feature not in ['id', 'track_1_details', 'track_2_details'] and 
+            feature in selected_features and
+            isinstance(values['track_1'],(int, float)) and
             0 <= values['track_1'] <= 1 and 
+            isinstance(values['track_2'],(int, float)) and
             0 <= values['track_2'] <= 1
         }
 
